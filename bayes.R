@@ -409,7 +409,7 @@ alpha.list <- vector("list", length(segments))
 beta.list <- vector("list", length(segments))
 for(z in 1:length(segments)){
 
-    combo_spec <- CN.output[segment==segments[i]]
+    combo_spec <- CN.output[segment==segments[z]]
 
 ## Create 2 column matrix now: P(alpha)P(k) and alpha(K*/K)
 
@@ -442,7 +442,7 @@ setkey(alpha.beta, segments)
 setkey(x, segment)
 
 # Do this if you want ALL segments annotated with alpha and beta -> this produces NULL for segments that weren't subsampled if subsapmling was performed
-X <- alpha.beta[x]
+x <- alpha.beta[x]
 
 #Do this if you want only segments with a non NULL alpha and beta
 x <- x[alpha.beta]
@@ -450,7 +450,7 @@ x <- x[alpha.beta]
 #Make sure when calling n here you referene the relevatn opt$ in run.R
 seq.names <- as.data.table(table(x$chr))
     #Create new grange table which is required for .segment function
-grange.out <- GRanges(seqnames = Rle(seq.names$V1, seq.names$N), ranges = IRanges(x$start,end=x$start+n*200-1,width=NULL,names=NULL), ratio = x$data, alpha = x$alpha.list, beta = x$beta.list, segment = x$segment)
+grange.out <- GRanges(seqnames = Rle(seq.names$V1, seq.names$N), ranges = IRanges(x$start,end=x$start+n*200-1,width=NULL,names=NULL), ratio = x$data, alpha = as.numeric(x$alpha.list), beta = as.numeric(x$beta.list), segment = as.numeric(x$segment))
 
 
 ##### To do
