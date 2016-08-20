@@ -237,9 +237,10 @@ log.sum.exp<- function(x){
 
 set.seed(1)
 y = set.bin.size()
-#x1 = x[1:1000,]
-x <- y[sample(nrow(y),nrow(y)/10)]
-x <- y[sample(nrow(y),nrow(y)/100)]
+# Now y has parts 1 and 2 y[[1]] and y[[2]] which are the data.table and grange object
+x <- y
+x <- x[sample(nrow(x),nrow(x)/10)]
+x <- x[sample(nrow(x),nrow(x)/100)]
 
 ###SLOIDY: Global sloidy being used.  Is that right???
 sloidy = mean(x$data)
@@ -289,11 +290,16 @@ SD.MAP = MAP[MAP == max(MAP)]$SD
 ## SD.MAP is  0.0452515976817749 for whole sample
 ## SD.MAP is 0.04275849 for sample/10
 ## SD.MAP is 0.05260518 for sample/100
-#######Sample 2 (T1 of the pairs)
+#######Sample /data/research/mski_lab/projects/Chantal/Flow/CBS/29407_B_29407_T1/cov.rds
 ## SD.MAP is 0.06243132 for whole sample
 ## SD.MAP is 0.06421183 for sample/10
 ## SD.MAP is 0.06128031 for sample/100
-
+## SD.MAP is 0.05838234 for sample w/ n = 100 sample/100
+## SD.MAP is 0.06633568 for sample w/ n = 50 sample/100
+## SD.MAP is 0.07052021 for sample w/ n = 50 sample/10
+## SD.MAP is 0.06849585 for sample w/ n = 50 whole
+## SD.MAP is 0.06276308 for sample w/ n = 100 sample/10
+## SD.MAP is 0.06457467 for sample w/ n = 100 whole
 
 #############################################################
 ############ Run this w/ max SD to get purity and ploidy#####
@@ -343,13 +349,29 @@ input.pp.trial.10 <- input
 save(input.pp.trial.10, file = "/gpfs/commons/groups/imielinski_lab/home/twalradt/input_pp_trial_10.RData")
 input.pp.trial.100 <- input
 save(input.pp.trial.100, file = "/gpfs/commons/groups/imielinski_lab/home/twalradt/input_pp_trial_whole.RData")
-#### second sample
+#### /data/research/mski_lab/projects/Chantal/Flow/CBS/29407_B_29407_T1/cov.rds
 input.pp.trial2 <- input
 save(input.pp.trial2, file = "/gpfs/commons/groups/imielinski_lab/home/twalradt/input_pp_trial2_whole.RData")
 input.pp.trial2.10 <- input
 save(input.pp.trial2.10, file = "/gpfs/commons/groups/imielinski_lab/home/twalradt/input_pp_trial2_10.RData")
 input.pp.trial2.100 <- input
 save(input.pp.trial2.100, file = "/gpfs/commons/groups/imielinski_lab/home/twalradt/input_pp_trial2_100.RData")
+input.pp.trial2.n100.whole <- input
+save(input.pp.trial2.n100.whole, file = "/gpfs/commons/groups/imielinski_lab/home/twalradt/input_pp_trial2_n100_whole.RData")
+input.pp.trial2.n100.100 <- input
+save(input.pp.trial2.n100.100, file = "/gpfs/commons/groups/imielinski_lab/home/twalradt/input_pp_trial2_n100_100.RData")
+input.pp.trial2.n50.100 <- input
+save(input.pp.trial2.n50.100, file = "/gpfs/commons/groups/imielinski_lab/home/twalradt/input_pp_trial2_n50_100.RData")
+input.pp.trial2.n50.10 <- input
+save(input.pp.trial2.n50.10, file = "/gpfs/commons/groups/imielinski_lab/home/twalradt/input_pp_trial2_n50_10.RData")
+input.pp.trial2.n50.whole <- input
+save(input.pp.trial2.n50.whole, file = "/gpfs/commons/groups/imielinski_lab/home/twalradt/input_pp_trial2_n50_whole.RData")
+
+input.pp.trial2.n100.10 <- input
+save(input.pp.trial2.n100.10, file = "/gpfs/commons/groups/imielinski_lab/home/twalradt/input_pp_trial2_n100_10.RData")
+
+
+
 
 input<-input.pp.trial2.100
 
@@ -359,8 +381,8 @@ out = merge(input, int)[, prob := exp(final - lse)]
 
 #Make heat map
 hm <- acast(out,ploidy~purity,value.var="prob")
-
-wij(d3heatmap(hm,dendrogram=NULL,Rowv=FALSE,Colv=FALSE),filename="sample2_100.html")
+library(d3heatmap)
+wij(d3heatmap(hm,dendrogram=NULL,Rowv=FALSE,Colv=FALSE),filename="sample2_n50_whole.html")
 
 #Try something like this:
 wij(d3heatmap(hm,dendrogram=NULL,Rowv=FALSE,Colv=FALSE,main="Sample 2 100", xlab = "Purity", ylab = "Ploidy"),filename="sample2_100_v2.html")
@@ -373,9 +395,73 @@ setkeyv(CN.matrix,c("purity", "ploidy"))
 high.prob.CN.matrix <- merge(out, CN.matrix)
 
 #SUPER hacky way of doing this, try again later
-CN<-high.prob.CN.matrix[,8:18,with=FALSE]
-CN.log<-CN[,(exp(.SD)/rowSums(exp(.SD)))]
-CN.output <- cbind(high.prob.CN.matrix[,.(purity, ploidy, segment)], CN.log)
+CN<-high.prob.CN.matrix[,(exp(.SD)/rowSums(exp(.SD))), .SDcols = 8:18]
+CN.output <- cbind(high.prob.CN.matrix[,.(purity, ploidy, segment, prob)], CN)
+
+
+library(MASS)
+
+# Create list before running loop
+# Not vectorized, definitely a faster way to do this
+segments <- unique(CN.output$segment)
+hist.list <- vector("list", length(segments))
+alpha.list <- vector("list", length(segments))
+beta.list <- vector("list", length(segments))
+for(z in 1:length(segments)){
+
+    combo_spec <- CN.output[segment==segments[i]]
+
+## Create 2 column matrix now: P(alpha)P(k) and alpha(K*/K)
+
+    num.CN = 10
+    my.list<-vector("list",num.CN)
+    for(i in 1:10){
+        prob <- rep(combo_spec$prob * combo_spec[[i + 5]], each = i)
+        loc <- c(t(do.call(base:::'%o%',list(combo_spec$purity, ((1:i) / i)))))
+        out <- cbind(prob, loc)
+        my.list[[i]] <- out
+    }
+
+    hist <- data.table(do.call(rbind, my.list))
+    hist[,prob2 := prob/sum(prob)]
+    hist.matrix = hist[, sample(loc, 10000, prob = prob2, replace = TRUE)]
+    beta = fitdistr(hist.matrix, dbeta, start = list(shape1 = 1, shape2 = 20))
+    hist.list[[z]] <- hist.matrix
+    alpha.list[[z]] <- beta$estimate[1]
+    beta.list[[z]] <- beta$estimate[2]
+    print(z)
+}
+
+hist.out <- data.table(do.call(cbind, hist.list))
+colnames(hist.out) <- as.character(segments)
+alpha.out <- data.table(cbind(alpha.list))
+beta.out <- data.table(cbind(beta.list))
+alpha.beta <- cbind( segments, alpha.out, beta.out)
+setkey(alpha.beta, segments)
+
+setkey(x, segment)
+
+# Do this if you want ALL segments annotated with alpha and beta -> this produces NULL for segments that weren't subsampled if subsapmling was performed
+X <- alpha.beta[x]
+
+#Do this if you want only segments with a non NULL alpha and beta
+x <- x[alpha.beta]
+
+#Make sure when calling n here you referene the relevatn opt$ in run.R
+seq.names <- as.data.table(table(x$chr))
+    #Create new grange table which is required for .segment function
+grange.out <- GRanges(seqnames = Rle(seq.names$V1, seq.names$N), ranges = IRanges(x$start,end=x$start+n*200-1,width=NULL,names=NULL), ratio = x$data, alpha = x$alpha.list, beta = x$beta.list, segment = x$segment)
+
+
+##### To do
+# Create granges object with segments and local alpha and beta
+# Make matrix with a column for histogram values for each segment
+# Comment code so that is is all easy to read and understand
+
+
+
+
+
 
 
 ##########################################################################
@@ -536,7 +622,5 @@ wij(d3heatmap(hm,dendrogram=NULL,Rowv=FALSE,Colv=FALSE),filename="sample2_100.ht
 #Try something like this:
 wij(d3heatmap(hm,dendrogram=NULL,Rowv=FALSE,Colv=FALSE,main="Sample 2 100", xlab = "Purity", ylab = "Ploidy"),filename="sample2_100_v2.html")
 
-
-#test
 
 
