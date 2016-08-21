@@ -206,11 +206,12 @@ library(DNAcopy)
 }
 
 #"/data/research/mski_lab/projects/Chantal/Flow/CBS/29331-B_29331-T/cov.rds"
-
-set.bin.size <- function(n = 500, data.path = "/data/research/mski_lab/projects/Chantal/Flow/CBS/29407_B_29407_T1/cov.rds"){
+#/gpfs/commons/groups/imielinski_lab/projects/Chantal/Flow/CBS/29333-B_29333-T/cov.rds"
+set.bin.size <- function(n = 500, data.path = "/gpfs/commons/groups/imielinski_lab/projects/Chantal/Flow/CBS/29333-B_29333-T/cov.rds"){
     CBS_cov<-readRDS(data.path)
     raw <- cbind(CBS_cov$ratio,as.data.table(ranges(CBS_cov))$start,as.data.table(seqnames(CBS_cov)))
     raw[V1 ==Inf,V1:=NA]
+browser()
     new <- raw[,.(ratio = mean(V1,na.rm=T),start = min(V2)),by=.(value,(seq(nrow(raw)) - 1) %/% n)]
     new <- new[!is.na(ratio)]
     new <- new[ratio > 0]
@@ -331,6 +332,7 @@ for(i in 1:num.ppv){
     #removed the log from inside the sume here
     input<-input[,.(logsum = sum(prob)),by=.(purity, ploidy, SD, CN, segment)]
     #Maybe store the data at this stage to get the prob for every CN state for every segment
+browser()
     CN.list[[i]] <- dcast(input,purity + ploidy + segment ~ CN, value.var = 'logsum')
     input <- input[,.(lse = log.sum.exp(logsum)), by = .(purity, ploidy, SD, segment)]
     input <- input[,.(final = sum(lse)), by = .(purity, ploidy, SD)]
@@ -397,7 +399,7 @@ high.prob.CN.matrix <- merge(out, CN.matrix)
 #SUPER hacky way of doing this, try again later
 CN<-high.prob.CN.matrix[,(exp(.SD)/rowSums(exp(.SD))), .SDcols = 8:18]
 CN.output <- cbind(high.prob.CN.matrix[,.(purity, ploidy, segment, prob)], CN)
-
+a<- readRDS("/gpfs/commons/home/twalradt/Flow/PurityPloidy/29333-B_29333-T/CN_matrix.Rds")
 
 library(MASS)
 
@@ -416,6 +418,7 @@ for(z in 1:length(segments)){
     num.CN = 10
     my.list<-vector("list",num.CN)
     for(i in 1:10){
+browser()
         prob <- rep(combo_spec$prob * combo_spec[[i + 5]], each = i)
         loc <- c(t(do.call(base:::'%o%',list(combo_spec$purity, ((1:i) / i)))))
         out <- cbind(prob, loc)
